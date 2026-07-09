@@ -52,7 +52,7 @@ export default function Home() {
       <Head>
         <title>Fokus — Flight Tracker</title>
         <meta name="description" content="Track flights end to end — gates, delays, weather, and live progress." />
-        <meta name="theme-color" content="#0B1F33" />
+        <meta name="theme-color" content="#101828" />
         <link rel="manifest" href="/manifest.json" />
       </Head>
 
@@ -96,7 +96,7 @@ export default function Home() {
                   className="route-line-animate"
                 />
                 <circle cx="10" cy="45" r="3" fill="#F0B429" />
-                <circle cx="310" cy="18" r="3" fill="#14B8A6" />
+                <circle cx="310" cy="18" r="3" fill="#84ADFF" />
                 <text x="20" y="58" fill="rgba(255,255,255,0.5)" fontSize="10" fontFamily="DM Sans">
                   DEP
                 </text>

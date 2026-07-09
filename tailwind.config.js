@@ -10,18 +10,18 @@ module.exports = {
     extend: {
       colors: {
         sky: {
-          deep: '#0B1F33',
-          mid: '#163A56',
-          mist: '#E8F1F7',
-          dawn: '#B8D4E8',
+          deep: '#101828',
+          mid: '#1D2939',
+          mist: '#F4F6FA',
+          dawn: '#D1E0FF',
         },
         runway: {
           amber: '#D4920A',
           glow: '#F0B429',
         },
         teal: {
-          flight: '#0E7C86',
-          soft: '#14B8A6',
+          flight: '#315EFB',
+          soft: '#7C9AFF',
         },
       },
       fontFamily: {

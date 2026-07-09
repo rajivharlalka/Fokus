@@ -193,7 +193,7 @@ export default function FlightDetailsPage() {
                   <div
                     className="absolute top-1/2 left-0 -translate-y-1/2 h-0.5 route-line-animate bg-white"
                   />
-                  <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#16475b] px-1 text-sm">
+                  <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#315EFB] px-1 text-sm">
                     ✈
                   </span>
                 </div>

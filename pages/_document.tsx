@@ -8,7 +8,7 @@ export default function Document() {
           name="description"
           content="Fokus — track flights end to end with gates, delays, weather, and live progress."
         />
-        <meta name="theme-color" content="#0B1F33" />
+        <meta name="theme-color" content="#101828" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="manifest" href="/manifest.json" />
