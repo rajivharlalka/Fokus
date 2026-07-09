@@ -286,12 +286,20 @@ export async function searchFlight(flightNumber: string): Promise<Flight> {
 
   if (apiKey) {
     try {
-      const url = `http://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_iata=${encodeURIComponent(code)}&limit=1`;
+      // Free tier uses HTTP; paid plans support HTTPS
+      const base = process.env.AVIATIONSTACK_USE_HTTPS === 'true'
+        ? 'https://api.aviationstack.com/v1'
+        : 'http://api.aviationstack.com/v1';
+      const url = `${base}/flights?access_key=${apiKey}&flight_iata=${encodeURIComponent(code)}&limit=1`;
       const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
-        const mapped = mapAviationStackFlight(json?.data?.[0]);
-        if (mapped) return mapped;
+        if (json?.error) {
+          console.error('AviationStack API error:', json.error);
+        } else {
+          const mapped = mapAviationStackFlight(json?.data?.[0]);
+          if (mapped) return mapped;
+        }
       }
     } catch (error) {
       console.error('AviationStack error, falling back to mock:', error);
