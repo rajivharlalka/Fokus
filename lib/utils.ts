@@ -1,6 +1,6 @@
 import { format, formatDistance, parseISO, differenceInMinutes } from 'date-fns';
 
-export const formatFlightTime = (dateString) => {
+export const formatFlightTime = (dateString: string): string => {
   if (!dateString) return 'N/A';
   try {
     const date = parseISO(dateString);
@@ -10,7 +10,7 @@ export const formatFlightTime = (dateString) => {
   }
 };
 
-export const formatFlightDate = (dateString) => {
+export const formatFlightDate = (dateString: string): string => {
   if (!dateString) return 'N/A';
   try {
     const date = parseISO(dateString);
@@ -20,7 +20,7 @@ export const formatFlightDate = (dateString) => {
   }
 };
 
-export const getTimeUntilFlight = (dateString) => {
+export const getTimeUntilFlight = (dateString: string): string => {
   if (!dateString) return 'Unknown';
   try {
     const date = parseISO(dateString);
@@ -30,7 +30,10 @@ export const getTimeUntilFlight = (dateString) => {
   }
 };
 
-export const getFlightDuration = (departureString, arrivalString) => {
+export const getFlightDuration = (
+  departureString: string,
+  arrivalString: string
+): string => {
   if (!departureString || !arrivalString) return 'N/A';
   try {
     const departure = parseISO(departureString);
@@ -44,7 +47,7 @@ export const getFlightDuration = (departureString, arrivalString) => {
   }
 };
 
-export const getStatusColor = (status) => {
+export const getStatusColor = (status: string): string => {
   switch (status?.toLowerCase()) {
     case 'scheduled':
       return '#4CAF50';
@@ -62,7 +65,7 @@ export const getStatusColor = (status) => {
   }
 };
 
-export const getStatusText = (status) => {
+export const getStatusText = (status: string): string => {
   switch (status?.toLowerCase()) {
     case 'scheduled':
       return 'Scheduled';
