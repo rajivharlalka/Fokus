@@ -17,50 +17,63 @@ export default function FlightDetails() {
   const { id } = router.query;
   const [flight, setFlight] = useState<Flight | null>(null);
   const [isTracking, setIsTracking] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     if (id && typeof id === 'string') {
       const flightData = getMockFlight(id);
       setFlight(flightData);
 
       // Check if already tracking
-      const stored = localStorage.getItem('trackedFlights');
-      if (stored) {
-        const tracked = JSON.parse(stored);
-        setIsTracking(tracked.some((f: Flight) => f.flightNumber === id));
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('trackedFlights');
+        if (stored) {
+          try {
+            const tracked = JSON.parse(stored);
+            setIsTracking(tracked.some((f: Flight) => f.flightNumber === id));
+          } catch (e) {
+            console.error('Error loading tracked flights:', e);
+          }
+        }
       }
     }
   }, [id]);
 
   const handleTrack = () => {
-    if (!flight) return;
+    if (!flight || typeof window === 'undefined') return;
 
-    const stored = localStorage.getItem('trackedFlights');
-    const tracked = stored ? JSON.parse(stored) : [];
+    try {
+      const stored = localStorage.getItem('trackedFlights');
+      const tracked = stored ? JSON.parse(stored) : [];
 
-    if (isTracking) {
-      // Remove from tracking
-      const filtered = tracked.filter(
-        (f: Flight) => f.flightNumber !== flight.flightNumber
-      );
-      localStorage.setItem('trackedFlights', JSON.stringify(filtered));
-      setIsTracking(false);
-      alert('Flight tracking disabled');
-    } else {
-      // Add to tracking
-      const exists = tracked.some(
-        (f: Flight) => f.flightNumber === flight.flightNumber
-      );
-      if (!exists) {
-        tracked.unshift(flight);
-        localStorage.setItem('trackedFlights', JSON.stringify(tracked));
+      if (isTracking) {
+        // Remove from tracking
+        const filtered = tracked.filter(
+          (f: Flight) => f.flightNumber !== flight.flightNumber
+        );
+        localStorage.setItem('trackedFlights', JSON.stringify(filtered));
+        setIsTracking(false);
+        alert('Flight tracking disabled');
+      } else {
+        // Add to tracking
+        const exists = tracked.some(
+          (f: Flight) => f.flightNumber === flight.flightNumber
+        );
+        if (!exists) {
+          tracked.unshift(flight);
+          localStorage.setItem('trackedFlights', JSON.stringify(tracked));
+        }
+        setIsTracking(true);
+        alert('Flight tracking enabled! Check the home screen.');
       }
-      setIsTracking(true);
-      alert('Flight tracking enabled! Check the home screen.');
+    } catch (e) {
+      console.error('Error managing tracked flights:', e);
+      alert('Error saving flight. Please try again.');
     }
   };
 
-  if (!flight) {
+  if (!mounted || !flight) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

@@ -6,19 +6,31 @@ import { formatFlightTime, getStatusColor, getStatusText } from '@/lib/utils';
 
 export default function Home() {
   const [trackedFlights, setTrackedFlights] = useState<Flight[]>([]);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     // Load tracked flights from localStorage
-    const stored = localStorage.getItem('trackedFlights');
-    if (stored) {
-      setTrackedFlights(JSON.parse(stored));
-    } else {
-      // Add some example flights
-      const examples = [getMockFlight('AA100'), getMockFlight('DL200')];
-      setTrackedFlights(examples);
-      localStorage.setItem('trackedFlights', JSON.stringify(examples));
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('trackedFlights');
+      if (stored) {
+        try {
+          setTrackedFlights(JSON.parse(stored));
+        } catch (e) {
+          console.error('Error loading flights:', e);
+        }
+      } else {
+        // Add some example flights
+        const examples = [getMockFlight('AA100'), getMockFlight('DL200')];
+        setTrackedFlights(examples);
+        localStorage.setItem('trackedFlights', JSON.stringify(examples));
+      }
     }
   }, []);
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <>
