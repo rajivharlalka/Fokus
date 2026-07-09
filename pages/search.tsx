@@ -1,170 +1,120 @@
-import { useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { searchFlight } from '@/lib/flightApi';
+import Layout from '@/components/Layout';
+import { POPULAR_ROUTES } from '@/lib/types';
+import { addRecentSearch, getRecentSearches } from '@/lib/storage';
 
-export default function Search() {
+export default function SearchPage() {
   const router = useRouter();
-  const [flightNumber, setFlightNumber] = useState('');
+  const [query, setQuery] = useState('');
+  const [recent, setRecent] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!flightNumber.trim()) {
-      setError('Please enter a flight number');
+  useEffect(() => {
+    setRecent(getRecentSearches());
+  }, []);
+
+  const go = (code: string) => {
+    const flightNumber = code.toUpperCase().trim();
+    if (!flightNumber) {
+      setError('Enter a flight number');
       return;
     }
-
     setLoading(true);
-    setError('');
-
-    try {
-      await searchFlight(flightNumber.trim());
-      router.push(`/flight/${flightNumber.trim().toUpperCase()}`);
-    } catch (err) {
-      setError('Failed to find flight. Please try again.');
-      setLoading(false);
-    }
+    addRecentSearch(flightNumber);
+    router.push(`/flight/${flightNumber}`);
   };
 
-  const quickSearch = (number: string) => {
-    setFlightNumber(number);
-    router.push(`/flight/${number}`);
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    go(query);
   };
 
   return (
     <>
       <Head>
-        <title>Search Flights - Flight Tracker</title>
+        <title>Search — Fokus</title>
       </Head>
+      <Layout title="Search" backHref="/">
+        <div className="px-4 py-6 pb-16">
+          <h1 className="font-display text-3xl font-bold mb-2">Find your flight</h1>
+          <p className="text-muted text-sm mb-6">
+            Enter an airline code and number — like AA100 or DL200.
+          </p>
 
-      <main className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <header className="bg-primary text-white p-4 shadow-md">
-          <div className="max-w-4xl mx-auto flex items-center">
-            <Link href="/" className="text-white text-base font-semibold">
-              ← Back
-            </Link>
-            <h1 className="flex-1 text-xl font-bold text-center mr-16">
-              Search Flights
-            </h1>
-          </div>
-        </header>
-
-        <div className="max-w-4xl mx-auto p-4">
-          {/* Search Form */}
-          <div className="bg-white rounded-2xl p-6 shadow-md mb-6">
-            <label className="block text-base font-semibold text-gray-800 mb-2">
-              Flight Number
-            </label>
-            <form onSubmit={handleSearch} className="flex gap-2">
+          <form onSubmit={onSubmit} className="mb-8">
+            <div className="flex gap-2">
               <input
-                type="text"
-                value={flightNumber}
-                onChange={(e) => setFlightNumber(e.target.value)}
-                placeholder="e.g., AA100, DL200, UA300"
-                className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl text-base focus:outline-none focus:border-primary"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value.toUpperCase());
+                  setError('');
+                }}
+                placeholder="AA100"
                 autoCapitalize="characters"
+                autoCorrect="off"
+                className="flex-1 surface rounded-xl px-4 py-3.5 text-lg font-semibold tracking-wider outline-none focus:ring-2"
+                style={{ caretColor: 'var(--accent)' }}
               />
               <button
                 type="submit"
                 disabled={loading}
-                className="bg-primary text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50"
+                className="px-5 py-3.5 rounded-xl font-semibold text-white disabled:opacity-60"
+                style={{ background: 'var(--accent)' }}
               >
-                {loading ? '...' : '🔍'}
+                {loading ? '…' : 'Go'}
               </button>
-            </form>
-            {error && <p className="text-error text-sm mt-2">{error}</p>}
-          </div>
-
-          {/* Search Tips */}
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-3">Search Tips</h2>
-            
-            <div className="bg-white rounded-xl p-4 shadow-sm mb-3 flex gap-3">
-              <span className="text-3xl">💡</span>
-              <div>
-                <h3 className="font-semibold text-gray-800 mb-1">
-                  Flight Number Format
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Enter airline code + flight number (e.g., AA100, DL200)
-                </p>
-              </div>
             </div>
+            {error && (
+              <p className="text-sm mt-2" style={{ color: 'var(--error)' }}>
+                {error}
+              </p>
+            )}
+          </form>
 
-            <div className="bg-white rounded-xl p-4 shadow-sm flex gap-3">
-              <span className="text-3xl">🌍</span>
-              <div>
-                <h3 className="font-semibold text-gray-800 mb-1">
-                  International Flights
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Works with all major airlines worldwide
-                </p>
+          {recent.length > 0 && (
+            <section className="mb-8">
+              <h2 className="text-xs uppercase tracking-wider text-muted mb-3">Recent</h2>
+              <div className="flex flex-wrap gap-2">
+                {recent.map((code) => (
+                  <button
+                    key={code}
+                    onClick={() => go(code)}
+                    className="surface px-3.5 py-2 rounded-full text-sm font-semibold hover:opacity-80 transition"
+                  >
+                    {code}
+                  </button>
+                ))}
               </div>
+            </section>
+          )}
+
+          <section>
+            <h2 className="text-xs uppercase tracking-wider text-muted mb-3">Popular routes</h2>
+            <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+              {POPULAR_ROUTES.map((route) => (
+                <button
+                  key={route.code}
+                  onClick={() => go(route.code)}
+                  className="w-full flex items-center justify-between py-4 text-left hover:opacity-80 transition"
+                >
+                  <div>
+                    <div className="font-semibold" style={{ color: 'var(--accent)' }}>
+                      {route.code}
+                    </div>
+                    <div className="text-sm text-muted mt-0.5">{route.label}</div>
+                  </div>
+                  <div className="font-display font-bold text-sm tracking-wide">
+                    {route.from} → {route.to}
+                  </div>
+                </button>
+              ))}
             </div>
-          </div>
-
-          {/* Popular Flights */}
-          <div>
-            <h2 className="text-xl font-bold text-gray-800 mb-3">
-              Popular Routes
-            </h2>
-
-            <button
-              onClick={() => quickSearch('AA100')}
-              className="block w-full bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow mb-3 text-left"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-lg font-bold text-primary">AA100</span>
-                <span className="text-gray-400">→</span>
-              </div>
-              <div className="text-xl font-bold text-gray-800 mb-1">
-                SFO • JFK
-              </div>
-              <div className="text-sm text-gray-600">
-                San Francisco to New York
-              </div>
-            </button>
-
-            <button
-              onClick={() => quickSearch('DL200')}
-              className="block w-full bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow mb-3 text-left"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-lg font-bold text-primary">DL200</span>
-                <span className="text-gray-400">→</span>
-              </div>
-              <div className="text-xl font-bold text-gray-800 mb-1">
-                LAX • ORD
-              </div>
-              <div className="text-sm text-gray-600">
-                Los Angeles to Chicago
-              </div>
-            </button>
-
-            <button
-              onClick={() => quickSearch('UA300')}
-              className="block w-full bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow text-left"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-lg font-bold text-primary">UA300</span>
-                <span className="text-gray-400">→</span>
-              </div>
-              <div className="text-xl font-bold text-gray-800 mb-1">
-                ORD • LHR
-              </div>
-              <div className="text-sm text-gray-600">
-                Chicago to London
-              </div>
-            </button>
-          </div>
+          </section>
         </div>
-      </main>
+      </Layout>
     </>
   );
 }

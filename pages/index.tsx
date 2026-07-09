@@ -1,135 +1,127 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import { Flight, getMockFlight } from '@/lib/flightApi';
-import { formatFlightTime, getStatusColor, getStatusText } from '@/lib/utils';
+import Layout from '@/components/Layout';
+import FlightCard from '@/components/FlightCard';
+import type { Flight } from '@/lib/types';
+import { getMockFlight } from '@/lib/flightApi';
+import { getTrackedFlights, removeTrackedFlight, saveTrackedFlights } from '@/lib/storage';
 
 export default function Home() {
-  const [trackedFlights, setTrackedFlights] = useState<Flight[]>([]);
+  const [tracked, setTracked] = useState<Flight[]>([]);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // Load tracked flights from localStorage
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('trackedFlights');
-      if (stored) {
-        try {
-          setTrackedFlights(JSON.parse(stored));
-        } catch (e) {
-          console.error('Error loading flights:', e);
-        }
-      } else {
-        // Add some example flights
-        const examples = [getMockFlight('AA100'), getMockFlight('DL200')];
-        setTrackedFlights(examples);
-        localStorage.setItem('trackedFlights', JSON.stringify(examples));
-      }
+    let flights = getTrackedFlights();
+    if (flights.length === 0) {
+      flights = [getMockFlight('DL200'), getMockFlight('AA100')];
+      saveTrackedFlights(flights);
     }
+    setTracked(flights);
   }, []);
 
-  if (!mounted) {
-    return null;
-  }
+  const handleRemove = (flightNumber: string) => {
+    removeTrackedFlight(flightNumber);
+    setTracked(getTrackedFlights());
+  };
 
   return (
     <>
       <Head>
-        <title>Flight Tracker - Track Your Flights</title>
-        <meta name="description" content="Track flights in real-time" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Fokus — Flight Tracker</title>
+        <meta name="description" content="Track flights end to end — gates, delays, weather, and live progress." />
+        <meta name="theme-color" content="#0B1F33" />
+        <link rel="manifest" href="/manifest.json" />
       </Head>
 
-      <main className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <header className="bg-primary text-white p-4 shadow-md">
-          <div className="max-w-4xl mx-auto">
-            <h1 className="text-2xl font-bold">✈️ Flight Tracker</h1>
+      <Layout transparent>
+        {/* Hero — one composition */}
+        <section className="sky-atmosphere text-white px-4 pt-6 pb-16 relative overflow-hidden">
+          <div
+            className="absolute inset-0 opacity-30 pointer-events-none"
+            style={{
+              backgroundImage:
+                'radial-gradient(circle at 20% 80%, rgba(255,255,255,0.08) 0 1px, transparent 1px), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.06) 0 1px, transparent 1px)',
+              backgroundSize: '48px 48px',
+            }}
+          />
+          <div className="relative max-w-3xl mx-auto">
+            <p className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight mb-3">
+              Fokus
+            </p>
+            <p className="text-white/80 text-base sm:text-lg max-w-md mb-8 leading-relaxed">
+              Follow every flight from gate to landing — delays, weather, and live progress in one place.
+            </p>
+            <Link
+              href="/search"
+              className="inline-flex items-center gap-2 bg-white text-sky-deep font-semibold px-6 py-3.5 rounded-xl hover:bg-sky-mist transition shadow-lg"
+            >
+              Search a flight
+              <span aria-hidden>→</span>
+            </Link>
+
+            {/* Atmospheric flight path visual */}
+            <div className="mt-12 opacity-90">
+              <svg viewBox="0 0 320 60" className="w-full max-w-sm" fill="none" aria-hidden>
+                <path
+                  d="M10 45 C 80 45, 100 15, 160 20 S 250 50, 310 18"
+                  stroke="rgba(255,255,255,0.35)"
+                  strokeWidth="1.5"
+                  strokeDasharray="4 6"
+                  className="route-line-animate"
+                />
+                <circle cx="10" cy="45" r="3" fill="#F0B429" />
+                <circle cx="310" cy="18" r="3" fill="#14B8A6" />
+                <text x="20" y="58" fill="rgba(255,255,255,0.5)" fontSize="10" fontFamily="DM Sans">
+                  DEP
+                </text>
+                <text x="290" y="12" fill="rgba(255,255,255,0.5)" fontSize="10" fontFamily="DM Sans">
+                  ARR
+                </text>
+              </svg>
+            </div>
           </div>
-        </header>
+        </section>
 
-        <div className="max-w-4xl mx-auto p-4">
-          {/* Search Button */}
-          <Link
-            href="/search"
-            className="block bg-primary text-white text-center text-lg font-semibold py-4 px-6 rounded-xl shadow-lg hover:bg-blue-600 transition-colors mb-6"
-          >
-            🔍 Search Flights
-          </Link>
-
-          {/* Tracked Flights Section */}
-          <div className="mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Tracked Flights</h2>
+        <section className="px-4 -mt-6 pb-12 relative z-10">
+          <div className="flex items-end justify-between mb-4">
+            <h2 className="font-display text-xl font-bold">Your flights</h2>
+            {mounted && tracked.length > 0 && (
+              <span className="text-xs text-muted">{tracked.length} tracked</span>
+            )}
           </div>
 
-          {trackedFlights.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="text-6xl mb-4">✈️</div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                No Tracked Flights
-              </h3>
-              <p className="text-gray-600">
-                Search for a flight to start tracking
+          {!mounted ? (
+            <div className="surface rounded-2xl p-8 text-center text-muted text-sm">Loading…</div>
+          ) : tracked.length === 0 ? (
+            <div className="surface rounded-2xl p-10 text-center">
+              <p className="font-display text-lg font-bold mb-2">No flights yet</p>
+              <p className="text-sm text-muted mb-5">
+                Search a flight number to start tracking your journey.
               </p>
+              <Link
+                href="/search"
+                className="inline-block text-sm font-semibold px-4 py-2 rounded-lg"
+                style={{ background: 'var(--accent)', color: '#fff' }}
+              >
+                Find a flight
+              </Link>
             </div>
           ) : (
-            <div className="space-y-4">
-              {trackedFlights.map((flight, index) => (
-                <Link
-                  key={index}
-                  href={`/flight/${flight.flightNumber}`}
-                  className="block bg-white rounded-2xl p-4 shadow-md hover:shadow-lg transition-shadow"
-                >
-                  {/* Flight Header */}
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-2xl font-bold text-gray-800">
-                      {flight.flightNumber}
-                    </h3>
-                    <span
-                      className="px-3 py-1 rounded-full text-white text-xs font-bold"
-                      style={{ backgroundColor: getStatusColor(flight.status) }}
-                    >
-                      {getStatusText(flight.status)}
-                    </span>
-                  </div>
-
-                  {/* Route */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="text-3xl font-bold text-gray-800">
-                        {flight.departure.iata}
-                      </div>
-                      <div className="text-base font-semibold text-gray-800 mt-1">
-                        {formatFlightTime(flight.departure.scheduled)}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center px-4">
-                      <div className="w-5 h-0.5 bg-primary"></div>
-                      <span className="text-xl mx-1">✈️</span>
-                      <div className="w-5 h-0.5 bg-primary"></div>
-                    </div>
-
-                    <div className="flex-1 text-right">
-                      <div className="text-3xl font-bold text-gray-800">
-                        {flight.arrival.iata}
-                      </div>
-                      <div className="text-base font-semibold text-gray-800 mt-1">
-                        {formatFlightTime(flight.arrival.scheduled)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Airline */}
-                  <div className="text-sm text-gray-600 text-center">
-                    {flight.airline}
-                  </div>
-                </Link>
+            <div className="space-y-3">
+              {tracked.map((flight, i) => (
+                <FlightCard
+                  key={flight.flightNumber}
+                  flight={flight}
+                  index={i}
+                  onRemove={handleRemove}
+                />
               ))}
             </div>
           )}
-        </div>
-      </main>
+        </section>
+      </Layout>
     </>
   );
 }

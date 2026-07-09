@@ -1,311 +1,305 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Flight, getMockFlight } from '@/lib/flightApi';
+import Layout from '@/components/Layout';
+import FlightTimeline from '@/components/FlightTimeline';
+import FlightMap from '@/components/FlightMap';
+import WeatherCard from '@/components/WeatherCard';
+import StatusBanner from '@/components/StatusBanner';
+import type { Flight, WeatherInfo } from '@/lib/types';
 import {
   formatFlightTime,
-  formatFlightDate,
-  getTimeUntilFlight,
   getFlightDuration,
+  getFlightProgress,
   getStatusColor,
   getStatusText,
+  getTimeUntilFlight,
 } from '@/lib/utils';
+import { addRecentSearch, isFlightTracked, toggleTrackedFlight } from '@/lib/storage';
 
-export default function FlightDetails() {
+export default function FlightDetailsPage() {
   const router = useRouter();
   const { id } = router.query;
   const [flight, setFlight] = useState<Flight | null>(null);
-  const [isTracking, setIsTracking] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [tracking, setTracking] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [depWeather, setDepWeather] = useState<WeatherInfo | null>(null);
+  const [arrWeather, setArrWeather] = useState<WeatherInfo | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [shareMsg, setShareMsg] = useState('');
 
   useEffect(() => {
-    setMounted(true);
-    if (id && typeof id === 'string') {
-      const flightData = getMockFlight(id);
-      setFlight(flightData);
+    if (!id || typeof id !== 'string') return;
 
-      // Check if already tracking
-      if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('trackedFlights');
-        if (stored) {
-          try {
-            const tracked = JSON.parse(stored);
-            setIsTracking(tracked.some((f: Flight) => f.flightNumber === id));
-          } catch (e) {
-            console.error('Error loading tracked flights:', e);
-          }
-        }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await fetch(`/api/flight/${encodeURIComponent(id)}`);
+        if (!res.ok) throw new Error('Flight not found');
+        const data: Flight = await res.json();
+        if (cancelled) return;
+        setFlight(data);
+        setTracking(isFlightTracked(data.flightNumber));
+        addRecentSearch(data.flightNumber);
+      } catch {
+        if (!cancelled) setError('Could not load this flight.');
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
+  useEffect(() => {
+    if (!flight) return;
+    const { departure, arrival } = flight;
+    if (departure.latitude == null || arrival.latitude == null) return;
+
+    let cancelled = false;
+    setWeatherLoading(true);
+    (async () => {
+      try {
+        const [depRes, arrRes] = await Promise.all([
+          fetch(`/api/weather?lat=${departure.latitude}&lon=${departure.longitude}`),
+          fetch(`/api/weather?lat=${arrival.latitude}&lon=${arrival.longitude}`),
+        ]);
+        const dep = depRes.ok ? await depRes.json() : null;
+        const arr = arrRes.ok ? await arrRes.json() : null;
+        if (!cancelled) {
+          setDepWeather(dep);
+          setArrWeather(arr);
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setWeatherLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [flight]);
+
   const handleTrack = () => {
+    if (!flight) return;
+    const nowTracking = toggleTrackedFlight(flight);
+    setTracking(nowTracking);
+  };
+
+  const handleShare = async () => {
     if (!flight || typeof window === 'undefined') return;
+    const url = window.location.href;
+    const text = `${flight.flightNumber} ${flight.departure.iata} → ${flight.arrival.iata}`;
 
     try {
-      const stored = localStorage.getItem('trackedFlights');
-      const tracked = stored ? JSON.parse(stored) : [];
-
-      if (isTracking) {
-        // Remove from tracking
-        const filtered = tracked.filter(
-          (f: Flight) => f.flightNumber !== flight.flightNumber
-        );
-        localStorage.setItem('trackedFlights', JSON.stringify(filtered));
-        setIsTracking(false);
-        alert('Flight tracking disabled');
+      if (navigator.share) {
+        await navigator.share({ title: flight.flightNumber, text, url });
       } else {
-        // Add to tracking
-        const exists = tracked.some(
-          (f: Flight) => f.flightNumber === flight.flightNumber
-        );
-        if (!exists) {
-          tracked.unshift(flight);
-          localStorage.setItem('trackedFlights', JSON.stringify(tracked));
-        }
-        setIsTracking(true);
-        alert('Flight tracking enabled! Check the home screen.');
+        await navigator.clipboard.writeText(url);
+        setShareMsg('Link copied');
+        setTimeout(() => setShareMsg(''), 2000);
       }
-    } catch (e) {
-      console.error('Error managing tracked flights:', e);
-      alert('Error saving flight. Please try again.');
+    } catch {
+      // user cancelled share
     }
   };
 
-  if (!mounted || !flight) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-2">✈️</div>
-          <p className="text-gray-600">Loading flight details...</p>
-        </div>
-      </div>
+      <Layout title="Flight" backHref="/">
+        <div className="px-4 py-20 text-center text-muted text-sm">Loading flight…</div>
+      </Layout>
     );
   }
+
+  if (error || !flight) {
+    return (
+      <Layout title="Flight" backHref="/search">
+        <div className="px-4 py-20 text-center">
+          <p className="font-display text-xl font-bold mb-2">Flight not found</p>
+          <p className="text-sm text-muted">{error || 'Try another flight number.'}</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  const progress = getFlightProgress(flight);
+  const statusColor = getStatusColor(flight.status);
 
   return (
     <>
       <Head>
-        <title>{flight.flightNumber} - Flight Details</title>
+        <title>
+          {flight.flightNumber} · {flight.departure.iata}→{flight.arrival.iata} — Fokus
+        </title>
       </Head>
 
-      <main className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <header className="bg-primary text-white p-4 shadow-md">
-          <div className="max-w-4xl mx-auto flex items-center">
-            <Link href="/" className="text-white text-base font-semibold">
-              ← Back
-            </Link>
-            <h1 className="flex-1 text-xl font-bold text-center mr-16">
-              Flight Details
-            </h1>
-          </div>
-        </header>
-
-        <div className="max-w-4xl mx-auto p-4">
-          {/* Flight Header */}
-          <div className="bg-white rounded-t-2xl p-6 shadow-md">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-800">
-                  {flight.flightNumber}
-                </h2>
-                <p className="text-base text-gray-600 mt-1">{flight.airline}</p>
-              </div>
-              <span
-                className="px-4 py-2 rounded-full text-white text-sm font-bold"
-                style={{ backgroundColor: getStatusColor(flight.status) }}
-              >
-                {getStatusText(flight.status)}
-              </span>
+      <Layout title={flight.flightNumber} backHref="/">
+        <div className="px-4 py-6 pb-20 space-y-4">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="font-display text-3xl font-extrabold tracking-tight">
+                {flight.flightNumber}
+              </h1>
+              <p className="text-muted text-sm mt-1">{flight.airline}</p>
+              {flight.source === 'live' && (
+                <span className="inline-block mt-2 text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full"
+                  style={{ background: 'var(--border)', color: 'var(--accent)' }}>
+                  Live data
+                </span>
+              )}
             </div>
+            <span
+              className={`px-3 py-1.5 rounded-full text-xs font-bold text-white ${
+                flight.status === 'active' ? 'status-live' : ''
+              }`}
+              style={{ backgroundColor: statusColor }}
+            >
+              {getStatusText(flight.status)}
+            </span>
+          </div>
 
+          {/* Big route */}
+          <div className="surface rounded-2xl p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-display text-4xl font-bold">{flight.departure.iata}</div>
+                <div className="text-xs text-muted mt-1">{flight.departure.city}</div>
+                <div className="text-sm font-semibold mt-2">
+                  {formatFlightTime(flight.departure.estimated || flight.departure.scheduled)}
+                </div>
+              </div>
+              <div className="flex-1 px-4 text-center">
+                <div className="text-xs text-muted mb-1">
+                  {getFlightDuration(flight.departure.scheduled, flight.arrival.scheduled)}
+                </div>
+                <div className="h-px relative" style={{ background: 'var(--border)' }}>
+                  <div
+                    className="absolute top-1/2 left-0 -translate-y-1/2 h-0.5 route-line-animate"
+                    style={{
+                      width: '100%',
+                      background: 'linear-gradient(90deg, var(--accent), var(--accent-soft))',
+                    }}
+                  />
+                </div>
+                <div className="text-xs text-muted mt-1">
+                  {getTimeUntilFlight(flight.departure.estimated || flight.departure.scheduled)}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="font-display text-4xl font-bold">{flight.arrival.iata}</div>
+                <div className="text-xs text-muted mt-1">{flight.arrival.city}</div>
+                <div className="text-sm font-semibold mt-2">
+                  {formatFlightTime(flight.arrival.estimated || flight.arrival.scheduled)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2">
             <button
               onClick={handleTrack}
-              className={`w-full py-4 rounded-xl font-semibold text-white transition-colors ${
-                isTracking
-                  ? 'bg-success hover:bg-green-600'
-                  : 'bg-primary hover:bg-blue-600'
-              }`}
+              className="flex-1 py-3.5 rounded-xl font-semibold text-white transition"
+              style={{ background: tracking ? 'var(--success)' : 'var(--accent)' }}
             >
-              {isTracking ? '✓ Tracking Enabled' : '+ Track This Flight'}
+              {tracking ? '✓ Tracking' : '+ Track flight'}
+            </button>
+            <button
+              onClick={handleShare}
+              className="px-4 py-3.5 rounded-xl font-semibold surface"
+            >
+              {shareMsg || 'Share'}
             </button>
           </div>
 
-          {/* Flight Progress */}
-          <div className="bg-white p-6 shadow-md border-t border-gray-100">
-            <h3 className="text-lg font-bold text-gray-800 mb-3">
-              Flight Progress
-            </h3>
-            <div className="mb-2">
-              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full"
-                  style={{ width: '40%' }}
-                ></div>
-              </div>
+          <StatusBanner
+            status={flight.status}
+            progress={progress}
+            label={
+              flight.status === 'active'
+                ? 'In the air'
+                : flight.status === 'delayed'
+                ? 'Delayed — updated ETA'
+                : getStatusText(flight.status)
+            }
+          />
+
+          <FlightMap flight={flight} />
+
+          <FlightTimeline flight={flight} />
+
+          {/* Weather */}
+          <section>
+            <h3 className="font-display font-bold text-lg mb-3">Airport weather</h3>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <WeatherCard
+                title="Departure"
+                iata={flight.departure.iata}
+                weather={depWeather}
+                loading={weatherLoading}
+              />
+              <WeatherCard
+                title="Arrival"
+                iata={flight.arrival.iata}
+                weather={arrWeather}
+                loading={weatherLoading}
+              />
             </div>
-            <p className="text-sm text-gray-600 text-center">
-              {getTimeUntilFlight(flight.departure.scheduled)}
-            </p>
-          </div>
+          </section>
 
-          {/* Timeline */}
-          <div className="bg-white rounded-b-2xl p-6 shadow-md mb-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">
-              Flight Timeline
-            </h3>
-
-            {/* Departure */}
-            <div className="flex gap-4 mb-6">
-              <div className="flex flex-col items-center">
-                <div
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: getStatusColor(flight.status) }}
-                ></div>
-                <div className="w-0.5 h-16 bg-gray-300 my-1"></div>
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start mb-1">
-                  <h4 className="text-2xl font-bold text-gray-800">
-                    {flight.departure.iata}
-                  </h4>
-                  <span className="text-lg font-semibold text-primary">
-                    {formatFlightTime(flight.departure.scheduled)}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600 mb-1">
-                  {flight.departure.airport}
-                </p>
-                <p className="text-xs text-gray-500 mb-2">
-                  {formatFlightDate(flight.departure.scheduled)}
-                </p>
-                <div className="flex gap-2">
-                  <span className="px-2 py-1 bg-gray-100 text-xs text-gray-700 rounded">
-                    Terminal {flight.departure.terminal}
-                  </span>
-                  <span className="px-2 py-1 bg-gray-100 text-xs text-gray-700 rounded">
-                    Gate {flight.departure.gate}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Arrival */}
-            <div className="flex gap-4">
-              <div className="flex flex-col items-center">
-                <div className="w-4 h-4 rounded-full bg-gray-300"></div>
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start mb-1">
-                  <h4 className="text-2xl font-bold text-gray-800">
-                    {flight.arrival.iata}
-                  </h4>
-                  <span className="text-lg font-semibold text-primary">
-                    {formatFlightTime(flight.arrival.scheduled)}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600 mb-1">
-                  {flight.arrival.airport}
-                </p>
-                <p className="text-xs text-gray-500 mb-2">
-                  {formatFlightDate(flight.arrival.scheduled)}
-                </p>
-                <div className="flex gap-2">
-                  <span className="px-2 py-1 bg-gray-100 text-xs text-gray-700 rounded">
-                    Terminal {flight.arrival.terminal}
-                  </span>
-                  <span className="px-2 py-1 bg-gray-100 text-xs text-gray-700 rounded">
-                    Gate {flight.arrival.gate}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
-              <span className="text-sm text-gray-600">Flight Duration</span>
-              <span className="text-base font-semibold text-gray-800">
-                {getFlightDuration(
-                  flight.departure.scheduled,
-                  flight.arrival.scheduled
-                )}
-              </span>
-            </div>
-          </div>
-
-          {/* Aircraft Info */}
-          <div className="bg-white rounded-2xl p-6 shadow-md mb-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">
-              Aircraft Information
-            </h3>
+          {/* Aircraft */}
+          <section className="surface rounded-2xl p-5">
+            <h3 className="font-display font-bold text-lg mb-4">Aircraft</h3>
             <div className="space-y-3">
-              <div className="flex justify-between py-3 border-b border-gray-100">
-                <span className="text-sm text-gray-600">Aircraft Type</span>
-                <span className="text-sm font-semibold text-gray-800">
-                  {flight.aircraft.type}
-                </span>
-              </div>
-              <div className="flex justify-between py-3">
-                <span className="text-sm text-gray-600">Registration</span>
-                <span className="text-sm font-semibold text-gray-800">
-                  {flight.aircraft.registration}
-                </span>
-              </div>
+              <Row label="Type" value={flight.aircraft.type} />
+              <Row label="Registration" value={flight.aircraft.registration} />
             </div>
-          </div>
+          </section>
 
-          {/* Live Data */}
+          {/* Live telemetry */}
           {flight.live && (
-            <div className="bg-white rounded-2xl p-6 shadow-md mb-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">
-                Live Data
-              </h3>
+            <section className="surface rounded-2xl p-5">
+              <h3 className="font-display font-bold text-lg mb-4">Live position</h3>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">Altitude</p>
-                  <p className="text-base font-semibold text-gray-800">
-                    {flight.live.altitude.toLocaleString()} ft
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">Speed</p>
-                  <p className="text-base font-semibold text-gray-800">
-                    {flight.live.speed} kts
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">Heading</p>
-                  <p className="text-base font-semibold text-gray-800">
-                    {flight.live.direction}°
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">Coordinates</p>
-                  <p className="text-base font-semibold text-gray-800">
-                    {flight.live.latitude.toFixed(2)}, {flight.live.longitude.toFixed(2)}
-                  </p>
-                </div>
+                <Metric label="Altitude" value={`${flight.live.altitude.toLocaleString()} ft`} />
+                <Metric label="Speed" value={`${flight.live.speed} kts`} />
+                <Metric label="Heading" value={`${flight.live.direction}°`} />
+                <Metric
+                  label="Coords"
+                  value={`${flight.live.latitude.toFixed(2)}, ${flight.live.longitude.toFixed(2)}`}
+                />
               </div>
-            </div>
-          )}
-
-          {/* Notification Info */}
-          {isTracking && (
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex gap-3">
-              <span className="text-3xl">🔔</span>
-              <div>
-                <h4 className="font-semibold text-blue-900 mb-1">
-                  Tracking Enabled
-                </h4>
-                <p className="text-sm text-blue-800">
-                  This flight is now on your home screen for easy tracking.
-                </p>
-              </div>
-            </div>
+            </section>
           )}
         </div>
-      </main>
+      </Layout>
     </>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between py-2 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
+      <span className="text-sm text-muted">{label}</span>
+      <span className="text-sm font-semibold">{value}</span>
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs text-muted mb-1">{label}</div>
+      <div className="text-sm font-semibold">{value}</div>
+    </div>
   );
 }
