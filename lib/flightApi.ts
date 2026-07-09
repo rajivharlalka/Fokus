@@ -5,31 +5,34 @@ import { getDelayMinutes, getFlightProgress, getTimelineStage, normalizeStatus }
 function withCoords(flight: Flight): Flight {
   const dep = AIRPORTS[flight.departure.iata];
   const arr = AIRPORTS[flight.arrival.iata];
-  return {
+  const enriched: Flight = {
     ...flight,
     departure: {
       ...flight.departure,
-      city: dep?.city || flight.departure.city,
-      latitude: dep?.lat,
-      longitude: dep?.lon,
+      // Prefer live airport name; fill city/coords from catalog when known
+      city: flight.departure.city || dep?.city,
+      latitude: flight.departure.latitude ?? dep?.lat,
+      longitude: flight.departure.longitude ?? dep?.lon,
       delayMinutes: getDelayMinutes(flight.departure.scheduled, flight.departure.estimated),
     },
     arrival: {
       ...flight.arrival,
-      city: arr?.city || flight.arrival.city,
-      latitude: arr?.lat,
-      longitude: arr?.lon,
+      city: flight.arrival.city || arr?.city,
+      latitude: flight.arrival.latitude ?? arr?.lat,
+      longitude: flight.arrival.longitude ?? arr?.lon,
       delayMinutes: getDelayMinutes(flight.arrival.scheduled, flight.arrival.estimated),
     },
-    stage: getTimelineStage(flight),
-    progress: getFlightProgress(flight),
   };
+  enriched.stage = getTimelineStage(enriched);
+  enriched.progress = getFlightProgress(enriched);
+  return enriched;
 }
 
 export const getMockFlight = (flightNumber: string): Flight => {
   const now = new Date();
   const code = flightNumber.toUpperCase().trim();
 
+  // Mock catalog mirrors common real routes for offline/demo use
   const catalog: Record<string, Flight> = {
     AA100: withCoords({
       flightNumber: 'AA100',
@@ -37,95 +40,97 @@ export const getMockFlight = (flightNumber: string): Flight => {
       status: 'scheduled',
       source: 'mock',
       departure: {
-        airport: AIRPORTS.SFO.name,
-        iata: 'SFO',
-        city: 'San Francisco',
-        scheduled: new Date(now.getTime() + 2.5 * 60 * 60 * 1000).toISOString(),
-        estimated: new Date(now.getTime() + 2.5 * 60 * 60 * 1000).toISOString(),
-        terminal: '2',
-        gate: 'A12',
-      },
-      arrival: {
         airport: AIRPORTS.JFK.name,
         iata: 'JFK',
         city: 'New York',
-        scheduled: new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString(),
-        estimated: new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString(),
+        scheduled: new Date(now.getTime() + 2.5 * 60 * 60 * 1000).toISOString(),
+        estimated: new Date(now.getTime() + 2.5 * 60 * 60 * 1000).toISOString(),
         terminal: '8',
+        gate: 'A12',
+      },
+      arrival: {
+        airport: AIRPORTS.LHR.name,
+        iata: 'LHR',
+        city: 'London',
+        scheduled: new Date(now.getTime() + 9.5 * 60 * 60 * 1000).toISOString(),
+        estimated: new Date(now.getTime() + 9.5 * 60 * 60 * 1000).toISOString(),
+        terminal: '3',
         gate: 'B23',
       },
-      aircraft: { registration: 'N12345', type: 'Boeing 737-800' },
+      aircraft: { registration: 'N12345', type: 'Boeing 777-300ER' },
     }),
     DL200: withCoords({
       flightNumber: 'DL200',
       airline: 'Delta Air Lines',
       status: 'active',
       source: 'mock',
-      progress: 42,
+      progress: 55,
       departure: {
-        airport: AIRPORTS.LAX.name,
-        iata: 'LAX',
-        city: 'Los Angeles',
-        scheduled: new Date(now.getTime() - 1.5 * 60 * 60 * 1000).toISOString(),
-        estimated: new Date(now.getTime() - 1.5 * 60 * 60 * 1000).toISOString(),
-        actual: new Date(now.getTime() - 1.4 * 60 * 60 * 1000).toISOString(),
-        terminal: 'B',
-        gate: '47',
+        airport: AIRPORTS.ATL.name,
+        iata: 'ATL',
+        city: 'Atlanta',
+        scheduled: new Date(now.getTime() - 8 * 60 * 60 * 1000).toISOString(),
+        estimated: new Date(now.getTime() - 8 * 60 * 60 * 1000).toISOString(),
+        actual: new Date(now.getTime() - 7.8 * 60 * 60 * 1000).toISOString(),
+        terminal: 'I',
+        gate: 'E12',
       },
       arrival: {
-        airport: AIRPORTS.ORD.name,
-        iata: 'ORD',
-        city: 'Chicago',
-        scheduled: new Date(now.getTime() + 2.5 * 60 * 60 * 1000).toISOString(),
-        estimated: new Date(now.getTime() + 2.3 * 60 * 60 * 1000).toISOString(),
-        terminal: '1',
-        gate: 'C18',
+        airport: AIRPORTS.JNB.name,
+        iata: 'JNB',
+        city: 'Johannesburg',
+        scheduled: new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString(),
+        estimated: new Date(now.getTime() + 5.5 * 60 * 60 * 1000).toISOString(),
+        terminal: 'A',
+        gate: 'A6',
       },
-      aircraft: { registration: 'N67890', type: 'Airbus A320' },
+      aircraft: { registration: 'N860DA', type: 'Airbus A350-900' },
       live: {
-        latitude: 36.8,
-        longitude: -105.2,
-        altitude: 38000,
-        speed: 480,
-        direction: 75,
+        latitude: 5.2,
+        longitude: -20.4,
+        altitude: 39000,
+        speed: 510,
+        direction: 110,
       },
     }),
     UA300: withCoords({
       flightNumber: 'UA300',
       airline: 'United Airlines',
-      status: 'delayed',
+      status: 'scheduled',
       source: 'mock',
       departure: {
-        airport: AIRPORTS.ORD.name,
-        iata: 'ORD',
-        city: 'Chicago',
+        airport: AIRPORTS.SFO.name,
+        iata: 'SFO',
+        city: 'San Francisco',
         scheduled: new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString(),
-        estimated: new Date(now.getTime() + 3.75 * 60 * 60 * 1000).toISOString(),
-        terminal: '1',
-        gate: 'B6',
+        estimated: new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString(),
+        terminal: '3',
+        gate: 'F6',
       },
       arrival: {
-        airport: AIRPORTS.LHR.name,
-        iata: 'LHR',
-        city: 'London',
-        scheduled: new Date(now.getTime() + 11 * 60 * 60 * 1000).toISOString(),
-        estimated: new Date(now.getTime() + 11.75 * 60 * 60 * 1000).toISOString(),
+        airport: AIRPORTS.HNL.name,
+        iata: 'HNL',
+        city: 'Honolulu',
+        scheduled: new Date(now.getTime() + 8.5 * 60 * 60 * 1000).toISOString(),
+        estimated: new Date(now.getTime() + 8.5 * 60 * 60 * 1000).toISOString(),
         terminal: '2',
-        gate: 'A10',
+        gate: 'C4',
       },
-      aircraft: { registration: 'N11223', type: 'Boeing 787-9 Dreamliner' },
+      aircraft: { registration: 'N29961', type: 'Boeing 777-200' },
     }),
     BA178: withCoords({
       flightNumber: 'BA178',
       airline: 'British Airways',
-      status: 'boarding',
+      status: 'active',
       source: 'mock',
+      progress: 40,
       departure: {
         airport: AIRPORTS.JFK.name,
         iata: 'JFK',
         city: 'New York',
-        scheduled: new Date(now.getTime() + 35 * 60 * 1000).toISOString(),
-        estimated: new Date(now.getTime() + 35 * 60 * 1000).toISOString(),
+        scheduled: new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString(),
+        estimated: new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString(),
+        actual: new Date(now.getTime() - 2.9 * 60 * 60 * 1000).toISOString(),
         terminal: '7',
         gate: '4',
       },
@@ -133,12 +138,19 @@ export const getMockFlight = (flightNumber: string): Flight => {
         airport: AIRPORTS.LHR.name,
         iata: 'LHR',
         city: 'London',
-        scheduled: new Date(now.getTime() + 7.5 * 60 * 60 * 1000).toISOString(),
-        estimated: new Date(now.getTime() + 7.5 * 60 * 60 * 1000).toISOString(),
+        scheduled: new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString(),
+        estimated: new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString(),
         terminal: '5',
         gate: 'A12',
       },
       aircraft: { registration: 'G-ZBJA', type: 'Boeing 787-10' },
+      live: {
+        latitude: 48.5,
+        longitude: -40.2,
+        altitude: 37000,
+        speed: 490,
+        direction: 70,
+      },
     }),
     EK201: withCoords({
       flightNumber: 'EK201',
@@ -203,8 +215,8 @@ export const getMockFlight = (flightNumber: string): Flight => {
   if (catalog[code]) return catalog[code];
 
   const popular = POPULAR_ROUTES.find((r) => r.code === code);
-  const from = popular ? AIRPORTS[popular.from] : AIRPORTS.SFO;
-  const to = popular ? AIRPORTS[popular.to] : AIRPORTS.JFK;
+  const from = popular ? AIRPORTS[popular.from] : AIRPORTS.JFK;
+  const to = popular ? AIRPORTS[popular.to] : AIRPORTS.LHR;
 
   return withCoords({
     flightNumber: code || 'XX000',
@@ -239,14 +251,20 @@ function mapAviationStackFlight(raw: any): Flight | null {
   if (!flightNumber) return null;
 
   const status = normalizeStatus(raw.flight_status);
+  const depIata = (raw.departure?.iata || '').toUpperCase();
+  const arrIata = (raw.arrival?.iata || '').toUpperCase();
+  const depMeta = AIRPORTS[depIata];
+  const arrMeta = AIRPORTS[arrIata];
+
   const flight: Flight = {
     flightNumber: String(flightNumber).toUpperCase(),
     airline: raw.airline?.name || 'Unknown Airline',
     status,
     source: 'live',
     departure: {
-      airport: raw.departure?.airport || 'Unknown',
-      iata: (raw.departure?.iata || 'XXX').toUpperCase(),
+      airport: raw.departure?.airport || depMeta?.name || 'Unknown',
+      iata: depIata || 'XXX',
+      city: depMeta?.city,
       scheduled: raw.departure?.scheduled,
       estimated: raw.departure?.estimated || raw.departure?.scheduled,
       actual: raw.departure?.actual,
@@ -254,8 +272,9 @@ function mapAviationStackFlight(raw: any): Flight | null {
       gate: raw.departure?.gate || '—',
     },
     arrival: {
-      airport: raw.arrival?.airport || 'Unknown',
-      iata: (raw.arrival?.iata || 'XXX').toUpperCase(),
+      airport: raw.arrival?.airport || arrMeta?.name || 'Unknown',
+      iata: arrIata || 'XXX',
+      city: arrMeta?.city,
       scheduled: raw.arrival?.scheduled,
       estimated: raw.arrival?.estimated || raw.arrival?.scheduled,
       actual: raw.arrival?.actual,
@@ -264,7 +283,7 @@ function mapAviationStackFlight(raw: any): Flight | null {
     },
     aircraft: {
       registration: raw.aircraft?.registration || '—',
-      type: raw.aircraft?.iata || raw.aircraft?.icao || '—',
+      type: raw.aircraft?.iata || raw.aircraft?.icao || raw.aircraft?.registration || '—',
     },
     live: raw.live
       ? {
@@ -280,34 +299,75 @@ function mapAviationStackFlight(raw: any): Flight | null {
   return withCoords(flight);
 }
 
+/** Prefer today's active/scheduled flight over yesterday's landed one */
+function pickBestFlight(rows: any[]): any | null {
+  if (!rows?.length) return null;
+
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  const scored = rows.map((row) => {
+    const status = (row.flight_status || '').toLowerCase();
+    const dep = row.departure?.scheduled ? Date.parse(row.departure.scheduled) : NaN;
+    const arr = row.arrival?.scheduled ? Date.parse(row.arrival.scheduled) : NaN;
+    let score = 0;
+
+    if (status === 'active') score += 100;
+    else if (status === 'scheduled') score += 80;
+    else if (status === 'landed') score += 20;
+    else if (status === 'cancelled') score -= 50;
+
+    // Prefer flights whose departure is near "now" (today / upcoming)
+    if (!Number.isNaN(dep)) {
+      const delta = Math.abs(dep - now);
+      if (delta < dayMs) score += 40;
+      else if (delta < 2 * dayMs) score += 10;
+      // Prefer future or very recent departures over old ones
+      if (dep > now - 6 * 60 * 60 * 1000) score += 15;
+    }
+
+    // Prefer flights still in progress (arrival in the future)
+    if (!Number.isNaN(arr) && arr > now) score += 25;
+
+    return { row, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0]?.row || null;
+}
+
 export async function searchFlight(flightNumber: string): Promise<Flight> {
   const code = flightNumber.toUpperCase().trim();
   const apiKey = process.env.AVIATIONSTACK_API_KEY || process.env.NEXT_PUBLIC_AVIATIONSTACK_API_KEY;
 
   if (apiKey) {
     try {
-      // Free tier uses HTTP; paid plans support HTTPS
-      const base = process.env.AVIATIONSTACK_USE_HTTPS === 'true'
-        ? 'https://api.aviationstack.com/v1'
-        : 'http://api.aviationstack.com/v1';
-      const url = `${base}/flights?access_key=${apiKey}&flight_iata=${encodeURIComponent(code)}&limit=1`;
+      // HTTPS works on current AviationStack plans; allow override to HTTP if needed
+      const useHttp = process.env.AVIATIONSTACK_USE_HTTP === 'true';
+      const base = useHttp
+        ? 'http://api.aviationstack.com/v1'
+        : 'https://api.aviationstack.com/v1';
+      // Fetch several results and pick the most relevant (not always [0], which can be yesterday)
+      const url = `${base}/flights?access_key=${apiKey}&flight_iata=${encodeURIComponent(code)}&limit=10`;
       const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
         if (json?.error) {
           console.error('AviationStack API error:', json.error);
         } else {
-          const mapped = mapAviationStackFlight(json?.data?.[0]);
+          const best = pickBestFlight(json?.data || []);
+          const mapped = mapAviationStackFlight(best);
           if (mapped) return mapped;
         }
+      } else {
+        console.error('AviationStack HTTP status:', res.status);
       }
     } catch (error) {
       console.error('AviationStack error, falling back to mock:', error);
     }
   }
 
-  // Simulate network for mock path
-  await new Promise((r) => setTimeout(r, 350));
+  await new Promise((r) => setTimeout(r, 200));
   return getMockFlight(code);
 }
 

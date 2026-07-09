@@ -78,13 +78,22 @@ export const AIRPORTS: Record<string, AirportCoords> = {
   ATL: { iata: 'ATL', name: 'Hartsfield-Jackson Atlanta', city: 'Atlanta', lat: 33.6407, lon: -84.4277 },
   SEA: { iata: 'SEA', name: 'Seattle-Tacoma International', city: 'Seattle', lat: 47.4502, lon: -122.3088 },
   MIA: { iata: 'MIA', name: 'Miami International', city: 'Miami', lat: 25.7959, lon: -80.287 },
+  HNL: { iata: 'HNL', name: 'Daniel K. Inouye International', city: 'Honolulu', lat: 21.3187, lon: -157.9225 },
+  JNB: { iata: 'JNB', name: 'O.R. Tambo International', city: 'Johannesburg', lat: -26.1392, lon: 28.246 },
+  DAL: { iata: 'DAL', name: 'Dallas Love Field', city: 'Dallas', lat: 32.8471, lon: -96.8518 },
+  TEB: { iata: 'TEB', name: 'Teterboro', city: 'Teterboro', lat: 40.8501, lon: -74.0608 },
+  BOS: { iata: 'BOS', name: 'Logan International', city: 'Boston', lat: 42.3656, lon: -71.0096 },
+  EWR: { iata: 'EWR', name: 'Newark Liberty International', city: 'Newark', lat: 40.6895, lon: -74.1745 },
+  IAH: { iata: 'IAH', name: 'George Bush Intercontinental', city: 'Houston', lat: 29.9902, lon: -95.3368 },
+  DEN: { iata: 'DEN', name: 'Denver International', city: 'Denver', lat: 39.8561, lon: -104.6737 },
 };
 
+/** Labels match real AviationStack routes for these flight numbers */
 export const POPULAR_ROUTES = [
-  { code: 'AA100', from: 'SFO', to: 'JFK', label: 'San Francisco to New York' },
-  { code: 'DL200', from: 'LAX', to: 'ORD', label: 'Los Angeles to Chicago' },
-  { code: 'UA300', from: 'ORD', to: 'LHR', label: 'Chicago to London' },
+  { code: 'AA100', from: 'JFK', to: 'LHR', label: 'New York to London' },
   { code: 'BA178', from: 'JFK', to: 'LHR', label: 'New York to London' },
+  { code: 'UA300', from: 'SFO', to: 'HNL', label: 'San Francisco to Honolulu' },
+  { code: 'DL200', from: 'ATL', to: 'JNB', label: 'Atlanta to Johannesburg' },
   { code: 'EK201', from: 'JFK', to: 'DXB', label: 'New York to Dubai' },
   { code: 'NH9', from: 'SFO', to: 'NRT', label: 'San Francisco to Tokyo' },
 ];

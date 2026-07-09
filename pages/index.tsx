@@ -13,9 +13,10 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
+    // Always refresh tracked list from storage; seed empty installs with live-aligned demos
     let flights = getTrackedFlights();
     if (flights.length === 0) {
-      flights = [getMockFlight('DL200'), getMockFlight('AA100')];
+      flights = [getMockFlight('BA178'), getMockFlight('AA100')];
       saveTrackedFlights(flights);
     }
     setTracked(flights);
