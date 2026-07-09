@@ -1,0 +1,51 @@
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# macOS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# iOS
+ios/
+*.xcworkspace
+*.xcodeproj
+*.pbxproj
+Pods/
+Podfile.lock
+
+# Android
+android/
+*.apk
+*.aab
+*.keystore
+
+# Testing
+coverage/
+.nyc_output/
+
+# Debug
+*.log
+*.log.*
+
+# Temporary
+tmp/
+temp/
