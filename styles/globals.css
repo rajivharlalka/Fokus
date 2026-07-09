@@ -20,6 +20,8 @@
   --warning: #D4920A;
   --error: #DC2626;
   --info: #0284C7;
+  --shadow: 0 18px 48px rgba(11, 31, 51, 0.10);
+  --shadow-soft: 0 8px 24px rgba(11, 31, 51, 0.07);
 }
 
 .dark {
@@ -34,6 +36,8 @@
   --hero-from: #040A12;
   --hero-via: #0B1F33;
   --hero-to: #0E4A52;
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+  --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.20);
 }
 
 * {
@@ -77,6 +81,29 @@ a {
 .surface {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+.surface-flat {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+}
+
+.boarding-pass {
+  background:
+    radial-gradient(circle at 88% 16%, rgba(240, 180, 41, 0.20), transparent 28%),
+    radial-gradient(circle at 14% 100%, rgba(20, 184, 166, 0.20), transparent 36%),
+    linear-gradient(145deg, #0b1f33 0%, #153b55 58%, #0d6570 100%);
+  box-shadow: 0 24px 60px rgba(11, 31, 51, 0.24);
+}
+
+.eyebrow {
+  font-size: 0.68rem;
+  line-height: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .text-muted {

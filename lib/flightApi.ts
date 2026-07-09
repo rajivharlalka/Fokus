@@ -284,6 +284,11 @@ function mapAviationStackFlight(raw: any): Flight | null {
     aircraft: {
       registration: raw.aircraft?.registration || '—',
       type: raw.aircraft?.iata || raw.aircraft?.icao || raw.aircraft?.registration || '—',
+      modeS: raw.aircraft?.icao24?.toUpperCase(),
+      source:
+        raw.aircraft?.registration || raw.aircraft?.iata || raw.aircraft?.icao
+          ? 'aviationstack'
+          : 'unavailable',
     },
     live: raw.live
       ? {
@@ -297,6 +302,47 @@ function mapAviationStackFlight(raw: any): Flight | null {
   };
 
   return withCoords(flight);
+}
+
+async function enrichAircraft(flight: Flight): Promise<Flight> {
+  const identifier =
+    flight.aircraft.registration !== '—'
+      ? flight.aircraft.registration
+      : flight.aircraft.modeS;
+
+  if (!identifier) return flight;
+
+  try {
+    const res = await fetch(
+      `https://api.adsbdb.com/v0/aircraft/${encodeURIComponent(identifier)}`,
+      { next: { revalidate: 86400 } } as RequestInit
+    );
+    if (!res.ok) return flight;
+
+    const json = await res.json();
+    const aircraft = json?.response?.aircraft;
+    if (!aircraft) return flight;
+
+    return {
+      ...flight,
+      aircraft: {
+        registration: aircraft.registration || flight.aircraft.registration,
+        type:
+          [aircraft.manufacturer, aircraft.type].filter(Boolean).join(' ') ||
+          aircraft.icao_type ||
+          flight.aircraft.type,
+        manufacturer: aircraft.manufacturer,
+        modeS: aircraft.mode_s || flight.aircraft.modeS,
+        owner: aircraft.registered_owner,
+        photoUrl: aircraft.url_photo,
+        photoThumbnailUrl: aircraft.url_photo_thumbnail,
+        source: 'adsbdb',
+      },
+    };
+  } catch (error) {
+    console.error('ADSBdb aircraft lookup error:', error);
+    return flight;
+  }
 }
 
 /** Prefer today's active/scheduled flight over yesterday's landed one */
@@ -357,7 +403,7 @@ export async function searchFlight(flightNumber: string): Promise<Flight> {
         } else {
           const best = pickBestFlight(json?.data || []);
           const mapped = mapAviationStackFlight(best);
-          if (mapped) return mapped;
+          if (mapped) return enrichAircraft(mapped);
         }
       } else {
         console.error('AviationStack HTTP status:', res.status);

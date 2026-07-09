@@ -9,6 +9,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const flight = await searchFlight(id);
+    // Avoid burning the limited AviationStack quota on repeated page loads/autocomplete.
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=900');
     return res.status(200).json(flight);
   } catch (error) {
     console.error(error);

@@ -14,10 +14,10 @@ export default function Layout({ children, title, backHref, transparent }: Layou
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
       <header
-        className={`sticky top-0 z-40 ${
+        className={`top-0 z-40 w-full ${
           transparent
-            ? 'bg-transparent'
-            : 'backdrop-blur-md border-b'
+            ? 'absolute bg-transparent text-white'
+            : 'sticky backdrop-blur-md border-b'
         }`}
         style={
           transparent
@@ -51,7 +51,9 @@ export default function Layout({ children, title, backHref, transparent }: Layou
               <button
                 onClick={toggle}
                 aria-label="Toggle theme"
-                className="text-sm px-2.5 py-1.5 rounded-lg surface hover:opacity-90 transition"
+                className={`text-sm px-2.5 py-1.5 rounded-lg hover:opacity-90 transition ${
+                  transparent ? 'bg-white/10 border border-white/15' : 'surface-flat'
+                }`}
               >
                 {theme === 'dark' ? '☀️' : '🌙'}
               </button>

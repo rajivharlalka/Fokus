@@ -29,6 +29,12 @@ export interface Flight {
   aircraft: {
     registration: string;
     type: string;
+    manufacturer?: string;
+    modeS?: string;
+    owner?: string;
+    photoUrl?: string | null;
+    photoThumbnailUrl?: string | null;
+    source?: 'aviationstack' | 'adsbdb' | 'mock' | 'unavailable';
   };
   live?: {
     latitude: number;

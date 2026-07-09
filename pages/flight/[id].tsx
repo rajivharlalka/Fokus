@@ -6,6 +6,7 @@ import FlightTimeline from '@/components/FlightTimeline';
 import FlightMap from '@/components/FlightMap';
 import WeatherCard from '@/components/WeatherCard';
 import StatusBanner from '@/components/StatusBanner';
+import AircraftCard from '@/components/AircraftCard';
 import type { Flight, WeatherInfo } from '@/lib/types';
 import {
   formatFlightTime,
@@ -142,80 +143,91 @@ export default function FlightDetailsPage() {
       </Head>
 
       <Layout title={flight.flightNumber} backHref="/">
-        <div className="px-4 py-6 pb-20 space-y-4">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="font-display text-3xl font-extrabold tracking-tight">
-                {flight.flightNumber}
-              </h1>
-              <p className="text-muted text-sm mt-1">{flight.airline}</p>
-              {flight.source === 'live' && (
-                <span className="inline-block mt-2 text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full"
-                  style={{ background: 'var(--border)', color: 'var(--accent)' }}>
-                  Live data
-                </span>
-              )}
-            </div>
-            <span
-              className={`px-3 py-1.5 rounded-full text-xs font-bold text-white ${
-                flight.status === 'active' ? 'status-live' : ''
-              }`}
-              style={{ backgroundColor: statusColor }}
-            >
-              {getStatusText(flight.status)}
-            </span>
-          </div>
-
-          {/* Big route */}
-          <div className="surface rounded-2xl p-5">
-            <div className="flex items-center justify-between">
+        <div className="px-4 py-6 pb-24 space-y-4">
+          {/* Boarding-pass hero */}
+          <section className="boarding-pass rounded-[1.6rem] p-5 sm:p-6 text-white overflow-hidden relative">
+            <div className="flex items-start justify-between gap-3 mb-8">
               <div>
-                <div className="font-display text-4xl font-bold">{flight.departure.iata}</div>
-                <div className="text-xs text-muted mt-1">{flight.departure.city}</div>
-                <div className="text-sm font-semibold mt-2">
+                <div className="text-[10px] uppercase tracking-[0.16em] text-white/55 font-bold">
+                  {flight.airline}
+                </div>
+                <h1 className="font-display text-2xl font-bold tracking-tight mt-1">
+                  {flight.flightNumber}
+                </h1>
+              </div>
+              <div className="flex items-center gap-2">
+                {flight.source === 'live' && (
+                  <span className="text-[9px] uppercase tracking-wider font-bold text-white/60">
+                    Live
+                  </span>
+                )}
+                <span
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold text-white ${
+                    flight.status === 'active' ? 'status-live' : ''
+                  }`}
+                  style={{ backgroundColor: statusColor }}
+                >
+                  {getStatusText(flight.status)}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-start justify-between">
+              <div className="min-w-0">
+                <div className="font-display text-5xl font-bold tracking-[-0.06em]">
+                  {flight.departure.iata}
+                </div>
+                <div className="text-xs text-white/55 mt-1 truncate max-w-[110px]">
+                  {flight.departure.city}
+                </div>
+                <div className="text-sm font-bold mt-3">
                   {formatFlightTime(flight.departure.estimated || flight.departure.scheduled)}
                 </div>
               </div>
-              <div className="flex-1 px-4 text-center">
-                <div className="text-xs text-muted mb-1">
+
+              <div className="flex-1 px-4 pt-2 text-center min-w-0">
+                <div className="text-[10px] text-white/50 mb-3">
                   {getFlightDuration(flight.departure.scheduled, flight.arrival.scheduled)}
                 </div>
-                <div className="h-px relative" style={{ background: 'var(--border)' }}>
+                <div className="h-px relative bg-white/20">
                   <div
-                    className="absolute top-1/2 left-0 -translate-y-1/2 h-0.5 route-line-animate"
-                    style={{
-                      width: '100%',
-                      background: 'linear-gradient(90deg, var(--accent), var(--accent-soft))',
-                    }}
+                    className="absolute top-1/2 left-0 -translate-y-1/2 h-0.5 route-line-animate bg-white"
                   />
+                  <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#16475b] px-1 text-sm">
+                    ✈
+                  </span>
                 </div>
-                <div className="text-xs text-muted mt-1">
+                <div className="text-[10px] text-white/50 mt-3 truncate">
                   {getTimeUntilFlight(flight.departure.estimated || flight.departure.scheduled)}
                 </div>
               </div>
-              <div className="text-right">
-                <div className="font-display text-4xl font-bold">{flight.arrival.iata}</div>
-                <div className="text-xs text-muted mt-1">{flight.arrival.city}</div>
-                <div className="text-sm font-semibold mt-2">
+
+              <div className="text-right min-w-0">
+                <div className="font-display text-5xl font-bold tracking-[-0.06em]">
+                  {flight.arrival.iata}
+                </div>
+                <div className="text-xs text-white/55 mt-1 truncate max-w-[110px] ml-auto">
+                  {flight.arrival.city}
+                </div>
+                <div className="text-sm font-bold mt-3">
                   {formatFlightTime(flight.arrival.estimated || flight.arrival.scheduled)}
                 </div>
               </div>
             </div>
-          </div>
+          </section>
 
           {/* Actions */}
           <div className="flex gap-2">
             <button
               onClick={handleTrack}
-              className="flex-1 py-3.5 rounded-xl font-semibold text-white transition"
+              className="flex-1 py-3.5 rounded-full font-semibold text-white transition shadow-lg"
               style={{ background: tracking ? 'var(--success)' : 'var(--accent)' }}
             >
               {tracking ? '✓ Tracking' : '+ Track flight'}
             </button>
             <button
               onClick={handleShare}
-              className="px-4 py-3.5 rounded-xl font-semibold surface"
+              className="px-5 py-3.5 rounded-full font-semibold surface"
             >
               {shareMsg || 'Share'}
             </button>
@@ -256,14 +268,7 @@ export default function FlightDetailsPage() {
             </div>
           </section>
 
-          {/* Aircraft */}
-          <section className="surface rounded-2xl p-5">
-            <h3 className="font-display font-bold text-lg mb-4">Aircraft</h3>
-            <div className="space-y-3">
-              <Row label="Type" value={flight.aircraft.type} />
-              <Row label="Registration" value={flight.aircraft.registration} />
-            </div>
-          </section>
+          <AircraftCard flight={flight} />
 
           {/* Live telemetry */}
           {flight.live && (
@@ -283,15 +288,6 @@ export default function FlightDetailsPage() {
         </div>
       </Layout>
     </>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between py-2 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
-      <span className="text-sm text-muted">{label}</span>
-      <span className="text-sm font-semibold">{value}</span>
-    </div>
   );
 }
 

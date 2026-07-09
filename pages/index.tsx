@@ -13,13 +13,33 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
-    // Always refresh tracked list from storage; seed empty installs with live-aligned demos
+    // Render cached flights immediately, then refresh them from the live API.
     let flights = getTrackedFlights();
     if (flights.length === 0) {
       flights = [getMockFlight('BA178'), getMockFlight('AA100')];
       saveTrackedFlights(flights);
     }
     setTracked(flights);
+
+    let cancelled = false;
+    Promise.all(
+      flights.map(async (flight) => {
+        try {
+          const res = await fetch(`/api/flight/${encodeURIComponent(flight.flightNumber)}`);
+          return res.ok ? ((await res.json()) as Flight) : flight;
+        } catch {
+          return flight;
+        }
+      })
+    ).then((fresh) => {
+      if (cancelled) return;
+      setTracked(fresh);
+      saveTrackedFlights(fresh);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleRemove = (flightNumber: string) => {
@@ -38,7 +58,7 @@ export default function Home() {
 
       <Layout transparent>
         {/* Hero — one composition */}
-        <section className="sky-atmosphere text-white px-4 pt-6 pb-16 relative overflow-hidden">
+        <section className="sky-atmosphere text-white px-4 pt-24 pb-20 relative overflow-hidden">
           <div
             className="absolute inset-0 opacity-30 pointer-events-none"
             style={{
@@ -48,22 +68,25 @@ export default function Home() {
             }}
           />
           <div className="relative max-w-3xl mx-auto">
-            <p className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight mb-3">
-              Fokus
+            <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-white/55 mb-3">
+              Your trip, in focus
             </p>
-            <p className="text-white/80 text-base sm:text-lg max-w-md mb-8 leading-relaxed">
-              Follow every flight from gate to landing — delays, weather, and live progress in one place.
+            <p className="font-display text-4xl sm:text-5xl font-extrabold tracking-[-0.04em] mb-3 max-w-xl">
+              Know what happens next.
+            </p>
+            <p className="text-white/70 text-base max-w-md mb-8 leading-relaxed">
+              Live gates, delays, weather and arrival details—without the airport noise.
             </p>
             <Link
               href="/search"
-              className="inline-flex items-center gap-2 bg-white text-sky-deep font-semibold px-6 py-3.5 rounded-xl hover:bg-sky-mist transition shadow-lg"
+              className="inline-flex items-center gap-3 bg-white text-sky-deep font-bold px-6 py-3.5 rounded-full hover:bg-sky-mist transition shadow-lg"
             >
               Search a flight
               <span aria-hidden>→</span>
             </Link>
 
             {/* Atmospheric flight path visual */}
-            <div className="mt-12 opacity-90">
+            <div className="mt-10 opacity-90">
               <svg viewBox="0 0 320 60" className="w-full max-w-sm" fill="none" aria-hidden>
                 <path
                   d="M10 45 C 80 45, 100 15, 160 20 S 250 50, 310 18"
@@ -85,9 +108,12 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="px-4 -mt-6 pb-12 relative z-10">
+        <section className="px-4 -mt-7 pb-12 relative z-10">
           <div className="flex items-end justify-between mb-4">
-            <h2 className="font-display text-xl font-bold">Your flights</h2>
+            <div>
+              <div className="eyebrow mb-1">Upcoming</div>
+              <h2 className="font-display text-2xl font-bold tracking-tight">Your flights</h2>
+            </div>
             {mounted && tracked.length > 0 && (
               <span className="text-xs text-muted">{tracked.length} tracked</span>
             )}
